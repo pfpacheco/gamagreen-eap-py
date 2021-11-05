@@ -1,0 +1,33 @@
+FROM python:3.9.6
+
+ENV LANG en_UK.UTF-8
+ENV LC_ALL en_UK.UTF-8
+
+RUN ln -s /run/shm /dev/shm
+RUN apt-get update --fix-missing
+
+# extra dependencies (over what buildpack-deps already includes)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+		libbluetooth-dev \
+		tk-dev \
+		uuid-dev \
+	&& rm -rf /var/lib/apt/lists/*
+RUN pip install --upgrade pip
+
+ARG ENVIRONMENT
+
+EXPOSE 11211
+
+# Set DJANGO_MODULE_SETTINGS environment variable
+ENV DJANGO_SETTINGS_MODULE=conf.settings
+
+RUN mkdir -p /opt/gamagreen-eap-py/
+COPY . /opt/gamagreen-eap-py/
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir -r /opt/gamagreen-eap-py/requirements.txt
+
+WORKDIR /opt/gamagreen-eap-py/src
+
+ENV C_FORCE_ROOT True
+
+CMD celery -A com.brookgreen.gama.celery.tasks.celery worker --loglevel=DEBUG
